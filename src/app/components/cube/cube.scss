@@ -9,7 +9,7 @@
   height: 200px;
   position: relative;
   transform-style: preserve-3d;
-  animation: rotate 10s infinite linear;
+  /* animation: rotate 10s infinite linear; */
 }
 
 @keyframes rotate {
@@ -31,7 +31,7 @@
 }
 
 .face div {
-  width: 33.333%; 
+  width: 33.333%;
   height: 33.333%;
   background-color: #f0f0f0;
   border: 1px solid black;
