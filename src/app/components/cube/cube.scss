@@ -1,0 +1,98 @@
+.container {
+  margin: auto;
+  perspective: 3000px;
+  perspective-origin: 0px -1000px;
+}
+
+.cube {
+  width: 200px;
+  height: 200px;
+  position: relative;
+  transform-style: preserve-3d;
+  animation: rotate 10s infinite linear;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(360deg);
+  }
+}
+
+.face {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  border: 1px solid black;
+}
+
+.face div {
+  width: 33.333%; 
+  height: 33.333%;
+  background-color: #f0f0f0;
+  border: 1px solid black;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 1.5em;
+  font-weight: bold;
+}
+
+#one {
+  background: crimson;
+  transform: translateZ(100px);
+}
+
+#one div {
+  background: crimson;
+}
+
+#two {
+  background: darkorange;
+  transform: translateX(100px) rotateY(90deg);
+}
+
+#two div {
+  background: darkorange;
+}
+
+#three {
+  background: yellow;
+  transform: translateZ(-100px);
+}
+
+#three div {
+  background: yellow;
+}
+
+#four {
+  background: blue;
+  transform: translateX(-100px) rotateY(90deg);
+}
+
+#four div {
+  background: blue;
+}
+
+#five {
+  background: green;
+  transform: translateY(-100px) rotateX(90deg);
+}
+
+#five div {
+  background: green;
+}
+
+#six {
+  background: white;
+  transform: translateY(100px) rotateX(90deg);
+}
+
+#six div {
+  background: white;
+}
