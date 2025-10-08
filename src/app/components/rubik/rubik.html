@@ -1,0 +1,15 @@
+<button id="startButton" (click)="initializeCube()">Start</button>
+<canvas *ngIf="isStarted()" id="rubikCanvas"></canvas>
+<div>{{ timer() }}</div>
+<div class="instructions">
+  <strong>instructions:</strong>
+  Arrow Keys: Rotate layers <br />
+  WASD: Rotate layers <br />
+  QE: Rotate layers <br />
+  ZXCV: Rotate middle layers <br />
+</div>
+
+<div *ngIf="isSolved()">
+  Congratulation! You solved the Rubik's Cube! <br />
+  <button id="restartButton">Restart</button>
+</div>
