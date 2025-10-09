@@ -1,15 +1,37 @@
-<button id="startButton" (click)="initializeCube()">Start</button>
-<canvas *ngIf="isStarted()" id="rubikCanvas"></canvas>
-<div>{{ timer() }}</div>
-<div class="instructions">
-  <strong>instructions:</strong>
-  Arrow Keys: Rotate layers <br />
-  WASD: Rotate layers <br />
-  QE: Rotate layers <br />
-  ZXCV: Rotate middle layers <br />
-</div>
+<div id="scene-container">
+  <div class="absolute top-10 md:top-16 text-center z-10">
+    @if (!isStarted()) {
+    <p class="text-3xl font-bold uppercase tracking-widest text-gray-800">THE</p>
+    <h1 class="title-text text-gray-900">CUBE</h1>
+    } @else {
+    <h1 class="title-text text-gray-900">
+      {{ minutes() | number:'2.0' }}:{{ seconds() | number:'2.0'}}<span class="text-4xl"
+        >.{{ milliseconds() | number:'2.0' }}</span
+      >
+    </h1>
+    }
+  </div>
 
-<div *ngIf="isSolved()">
-  Congratulation! You solved the Rubik's Cube! <br />
-  <button id="restartButton">Restart</button>
+  @if (!isStarted()) {
+  <div id="instruction" class="absolute bottom-10 z-10 text-center endless-fade" (dblclick)="startGame()">
+    <p class="text-xs sm:text-sm md:text-base font-extrabold tracking-widest text-gray-700 opacity-80">
+      DOUBLE CLICK / DOUBLE TAP TO START
+    </p>
+  </div>
+  } @if(isSolved()) {
+  <div class="absolute bottom-[-20px] z-10 text-center">
+    <div class="w-full max-w-md bg-transparent p-8">
+      <p class="text-4xl sm:text-5xl font-extrabold text-gray-800 text-center mb-10 tracking-tight leading-snug">
+        YOU WON!! 🎉
+      </p>
+
+      <button
+        class="w-full py-3 px-6 text-lg font-semibold text-white bg-indigo-600 rounded-lg shadow-lg hover:bg-indigo-700 hover:shadow-xl transition duration-300 ease-in-out focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50 transform hover:scale-105"
+        (click)="restartGame()"
+      >
+        Restart
+      </button>
+    </div>
+  </div>
+  }
 </div>

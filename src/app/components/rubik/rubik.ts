@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, OnInit, signal } from '@angular/core';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
@@ -10,77 +10,196 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
   styleUrl: './rubik.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class Rubik {
-  timer = signal('Timer: 00:00');
+export class Rubik implements OnInit {
+  #time = signal(0);
+  minutes = computed(() => Math.floor(this.#time() / 60000));
+  seconds = computed(() => Math.floor((this.#time() % 60000) / 1000));
+  milliseconds = computed(() => Math.floor((this.#time() % 1000) / 10));
   isSolved = signal(false);
   isStarted = signal(false);
   startTime = Date.now();
-  timeInterval = setInterval(() => this.updateTimer(), 1000);
+  timeInterval: any;
 
   scene!: THREE.Scene;
   camera!: THREE.PerspectiveCamera;
   renderer!: THREE.WebGLRenderer;
   controls!: OrbitControls;
   cubelets: THREE.Mesh[] = [];
+  cubeGroup!: THREE.Group;
+
+  cubieSize = 0.9;
+  gap = 0.1;
+  stickerSize = this.cubieSize * 0.88;
+  stickerOffset = this.cubieSize / 2 + 0.001;
+
+  #animationTime = 0;
+  readonly #FLOAT_AMPLITUDE = 0.04; // Altura máxima del flotado
+  readonly #FLOAT_SPEED = 0.03; // Velocidad de la oscilación
+
+  ngOnInit(): void {
+    this.initializeCube();
+  }
 
   initializeCube() {
-    this.isStarted.set(true);
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    const canvas = document.getElementById('rubikCanvas') as HTMLCanvasElement;
-    this.renderer = new THREE.WebGLRenderer({
-      canvas,
-      alpha: true,
-      antialias: true
-    });
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
+
+    const container = document.getElementById('scene-container');
+    const { clientWidth, clientHeight } = container!;
+    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer.setSize(clientWidth, clientHeight);
     this.renderer.setClearColor(0x000000, 0);
-    document.body.appendChild(this.renderer.domElement);
+    container.appendChild(this.renderer.domElement);
 
-    const cubeSize = 3;
-    const cubeletSize = 1;
-    /* const cubelets = []; */
+    this.camera = new THREE.PerspectiveCamera(85, clientWidth / clientHeight, 0.1, 1000);
+    this.camera.position.set(1, 4, 4);
+    this.camera.lookAt(0, 0, 0);
 
-    const colors = [
-      0xff0000, // Red
-      0x00ff00, // Green
-      0x0000ff, // Blue
-      0xffff00, // Yellow
-      0xffa500, // Orange
-      0xffffff
-    ];
+    // Luz ambiental
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1);
+    this.scene.add(ambientLight);
 
-    for (let x = 0; x < cubeSize; x++) {
-      for (let y = 0; y < cubeSize; y++) {
-        for (let z = 0; z < cubeSize; z++) {
-          const geometry = new THREE.BoxGeometry(cubeletSize, cubeletSize, cubeletSize);
-          const material = [
-            new THREE.MeshBasicMaterial({ color: colors[0] }),
-            new THREE.MeshBasicMaterial({ color: colors[1] }),
-            new THREE.MeshBasicMaterial({ color: colors[2] }),
-            new THREE.MeshBasicMaterial({ color: colors[3] }),
-            new THREE.MeshBasicMaterial({ color: colors[4] }),
-            new THREE.MeshBasicMaterial({ color: colors[5] })
-          ];
-          const cubelet = new THREE.Mesh(geometry, material);
-          cubelet.position.set(x - 1, y - 1, z - 1);
-          this.cubelets.push(cubelet);
-          this.scene.add(cubelet);
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    // Activa el "damping" (amortiguación), que suaviza el movimiento de la cámara.
+    // Sin esto, el movimiento sería instantáneo y menos natural.
+    this.controls.enableDamping = true;
+    this.controls.dampingFactor = 0.25;
+    this.controls.enableZoom = false;
+    // Desactiva el movimiento de paneo (traslación lateral/vertical de la cámara).
+    // Solo se permitirá rotar la cámara alrededor del objetivo.
+    this.controls.enablePan = false;
+
+    this.createRubiksCube();
+    this.animate();
+
+    window.addEventListener('resize', () => {
+      this.camera.aspect = clientWidth / clientHeight;
+      this.camera.updateProjectionMatrix();
+      this.renderer.setSize(clientWidth, clientHeight);
+    });
+  }
+
+  createRubiksCube() {
+    this.cubeGroup = new THREE.Group();
+    const positions = [-1, 0, 1];
+
+    for (const i of positions) {
+      for (const j of positions) {
+        for (const k of positions) {
+          if (i === 0 && j === 0 && k === 0) continue;
+          const cubie = this.createCubie(i, j, k);
+          this.cubeGroup.add(cubie);
         }
       }
     }
 
-    this.camera.position.z = 5;
+    // Aplicar una rotación inicial para que coincida con la vista isométrica de la imagen
+    this.cubeGroup.rotation.x = -Math.PI * 1.06;
+    this.cubeGroup.rotation.y = Math.PI * 0.99;
 
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.enableDamping = true;
-    this.controls.dampingFactor = 0.25;
-    this.controls.enableZoom = false;
+    this.scene.add(this.cubeGroup);
+  }
 
-    this.randomRotations();
+  /**
+   * Crea un solo cubie (cubo pequeño) usando el método de sticker sobre un core negro
+   * para un borde negro limpio.
+   */
+  createCubie(xIndex, yIndex, zIndex) {
+    const cubieGroup = new THREE.Group();
 
-    this.animate();
+    const CUBE_COLORS = {
+      // [0: White (W), 1: Red (R), 2: Blue (B), 3: Yellow (Y), 4: Orange (O), 5: Green (G)]
+      OUTER_FACES: [0xffffff, 0xff0000, 0x0000ff, 0xffff00, 0xffa500, 0x00ff00],
+      INNER_CORE: 0x1a1a1a // Black
+    };
 
+    // 1. Core Negro (El cuerpo del cubie, que crea el borde)
+    const coreGeometry = new THREE.BoxGeometry(this.cubieSize, this.cubieSize, this.cubieSize);
+    const coreMaterial = new THREE.MeshPhongMaterial({
+      color: CUBE_COLORS.INNER_CORE,
+      specular: 0x050505,
+      shininess: 30
+    });
+    const coreMesh = new THREE.Mesh(coreGeometry, coreMaterial);
+
+    cubieGroup.add(coreMesh);
+
+    // Stickers (Placas de color sobre el core)
+    // [0: W, 1: R, 2: B, 3: Y, 4: O, 5: G]
+    const stickerColors = CUBE_COLORS.OUTER_FACES;
+
+    // Función auxiliar para crear la placa de color (sticker)
+    function createSticker(color, width, height, depth, position) {
+      const material = new THREE.MeshPhongMaterial({ color: color, specular: 0x050505, shininess: 30 });
+      const geometry = new THREE.BoxGeometry(width, height, depth);
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(position.x, position.y, position.z);
+      return mesh;
+    }
+
+    // --- Añadir Stickers si la cara es exterior (xIndex, yIndex, zIndex != 0) ---
+
+    // +X (Derecha) -> Rojo (R=1)
+    if (xIndex === 1) {
+      cubieGroup.add(
+        createSticker(stickerColors[1], 0.01, this.stickerSize, this.stickerSize, { x: this.stickerOffset, y: 0, z: 0 })
+      );
+    }
+    // -X (Izquierda) -> Naranja (O=4)
+    else if (xIndex === -1) {
+      cubieGroup.add(
+        createSticker(stickerColors[4], 0.01, this.stickerSize, this.stickerSize, {
+          x: -this.stickerOffset,
+          y: 0,
+          z: 0
+        })
+      );
+    }
+
+    // +Y (Arriba) -> Blanco (W=0)
+    if (yIndex === 1) {
+      cubieGroup.add(
+        createSticker(stickerColors[0], this.stickerSize, 0.01, this.stickerSize, { x: 0, y: this.stickerOffset, z: 0 })
+      );
+    }
+    // -Y (Abajo) -> Amarillo (Y=3)
+    else if (yIndex === -1) {
+      cubieGroup.add(
+        createSticker(stickerColors[3], this.stickerSize, 0.01, this.stickerSize, {
+          x: 0,
+          y: -this.stickerOffset,
+          z: 0
+        })
+      );
+    }
+
+    // +Z (Frontal) -> Azul (B=2)
+    if (zIndex === 1) {
+      cubieGroup.add(
+        createSticker(stickerColors[2], this.stickerSize, this.stickerSize, 0.01, { x: 0, y: 0, z: this.stickerOffset })
+      );
+    }
+    // -Z (Trasera) -> Verde (G=5)
+    else if (zIndex === -1) {
+      cubieGroup.add(
+        createSticker(stickerColors[5], this.stickerSize, this.stickerSize, 0.01, {
+          x: 0,
+          y: 0,
+          z: -this.stickerOffset
+        })
+      );
+    }
+
+    // Set the position of the entire cubie group (que incluye el core negro y los stickers)
+    cubieGroup.position.set(
+      xIndex * (this.cubieSize + this.gap),
+      yIndex * (this.cubieSize + this.gap),
+      zIndex * (this.cubieSize + this.gap)
+    );
+
+    return cubieGroup;
+  }
+
+  enableButtons() {
     document.addEventListener('keydown', (event) => {
       switch (event.key) {
         case 'ArrowUp':
@@ -133,12 +252,6 @@ export class Rubik {
           break;
       }
     });
-
-    window.addEventListener('resize', () => {
-      this.camera.aspect = window.innerWidth / window.innerHeight;
-      this.camera.updateProjectionMatrix();
-      this.renderer.setSize(window.innerWidth, window.innerHeight);
-    });
   }
 
   rotateSide(axis, layer, direction) {
@@ -147,7 +260,7 @@ export class Rubik {
     const rotationMatrix = new THREE.Matrix4();
     rotationMatrix.makeRotationAxis(rotationAxis, (direction * Math.PI) / 2);
 
-    this.cubelets.forEach((cubelet) => {
+    this.cubeGroup.children.forEach((cubelet) => {
       if (Math.round(cubelet.position[axis]) === layer) {
         cubelet.applyMatrix4(rotationMatrix);
         cubelet.position.round();
@@ -170,18 +283,18 @@ export class Rubik {
 
   animate = () => {
     requestAnimationFrame(this.animate);
+    if (!this.isStarted()) {
+      this.cubeGroup.rotation.y += 0.002;
+
+      this.#animationTime += this.#FLOAT_SPEED;
+      this.cubeGroup.position.y = Math.sin(this.#animationTime) * this.#FLOAT_AMPLITUDE;
+    } else if (this.isStarted() && this.cubeGroup && this.cubeGroup.position.y !== 0) {
+      this.cubeGroup.position.y = 0;
+    }
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
     this.checkIfSolved();
   };
-
-  updateTimer() {
-    const currentTime = Date.now();
-    const elapsedTime = currentTime - this.startTime;
-    const minutes = Math.floor(elapsedTime / 60000);
-    const seconds = Math.floor((elapsedTime % 60000) / 1000);
-    this.timer.set(`Timer: ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`);
-  }
 
   checkIfSolved() {
     const solvedColors = [
@@ -204,19 +317,56 @@ export class Rubik {
     }
   }
 
+  startGame() {
+    if (this.isStarted()) return;
+    this.isStarted.set(true);
+    if (this.controls) {
+      this.controls.enabled = true;
+    }
+    this.enableButtons();
+    this.startTimer();
+  }
+
+  startTimer() {
+    this.stopTimer();
+    this.startTime = Date.now();
+    this.timeInterval = setInterval(() => {
+      this.#time.set(this.#time() + 10);
+    }, 10);
+  }
+
+  stopTimer() {
+    if (this.timeInterval) {
+      clearInterval(this.timeInterval);
+    }
+  }
+
   showWinnerMessage() {
-    clearInterval(this.timeInterval);
+    this.stopTimer();
     this.isSolved.set(true);
   }
 
   restartGame() {
     this.isSolved.set(false);
-    this.timer.set('Timer: 00:00');
-    this.startTime = Date.now();
-    this.timeInterval = setInterval(() => this.updateTimer(), 1000);
+    this.isStarted.set(false);
 
+    this.#time.set(0);
+    this.startTime = Date.now();
+    this.stopTimer();
+
+    if (this.scene && this.cubeGroup) {
+      this.scene.remove(this.cubeGroup);
+    }
     this.scene.children.length = 0;
     this.cubelets.length = 0;
-    this.initializeCube();
+
+    this.camera.position.set(1, 4, 4);
+    this.camera.lookAt(0, 0, 0);
+
+    this.createRubiksCube();
+
+    if (this.controls) {
+      this.controls.enabled = false;
+    }
   }
 }
