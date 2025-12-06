@@ -1,0 +1,17 @@
+<div class="gallery-container">
+  @for (scene of scenesEntries; track scene[0]; let i = $index) {
+  <div class="title-group">
+    <p #titleRef class="animated-title" (mouseenter)="onMouseEnter(scene[0])" (mouseleave)="onMouseLeave(scene[0])">
+      {{ scene[0] | uppercase }} WORKS!
+    </p>
+
+    <div class="gifs-container">
+      @for (config of scene[1]; track $index; let gifIndex = $index) {
+      <div #boxRef class="hover-box">
+        <img class="gif-image" alt="gif" [src]="config.src" />
+      </div>
+      }
+    </div>
+  </div>
+  }
+</div>
