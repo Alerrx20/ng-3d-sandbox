@@ -5,6 +5,7 @@ import { AnimeAnimationScene } from './components/anime-animation-scene/anime-an
 import { ScrollTriggerText } from './components/scroll-trigger-text/scroll-trigger-text';
 
 export const appRoutes: Route[] = [
+  { path: '', redirectTo: 'scrolltrigger', pathMatch: 'full' },
   { path: 'cube', component: Cube },
   { path: 'rubik', component: Rubik },
   { path: 'anime', component: AnimeAnimationScene },

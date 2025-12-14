@@ -1,12 +1,22 @@
 <header class="header">
   <div class="header__logo">
-    <a href="/">NG-3D-Sandbox</a>
+    <a href="/">Ale-3D-Sandbox</a>
   </div>
-  <nav class="header__nav">
-    <a href="/home" class="header__nav-item">Home</a>
-    <a href="/anime" class="header__nav-item">Anime Scene</a>
-    <a href="/cube" class="header__nav-item">Cube 3D</a>
-    <a href="/rubik" class="header__nav-item">Rubik Game</a>
-    <a href="/scrolltrigger" class="header__nav-item">Scroll Trigger</a>
+
+  <button
+    class="header__toggle"
+    [attr.aria-expanded]="isMenuOpen()"
+    (click)="toggleMenu()"
+    aria-label="Abrir o cerrar menú"
+  >
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
+
+  <nav class="header__nav" [attr.data-visible]="isMenuOpen()">
+    @for (item of navItems; track item.route) {
+    <a [routerLink]="item.route" class="header__nav-item" (click)="toggleMenu()"> {{ item.title }} </a>
+    }
   </nav>
 </header>
