@@ -55,7 +55,7 @@ export class Rubik implements OnInit {
     this.camera.lookAt(0, 0, 0);
 
     // Luz ambiental
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 3);
     this.scene.add(ambientLight);
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);

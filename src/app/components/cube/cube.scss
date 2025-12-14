@@ -1,4 +1,8 @@
 .container {
+  min-height: calc(100vh - 70px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
   margin: auto;
   perspective: 3000px;
   perspective-origin: 0px -1000px;

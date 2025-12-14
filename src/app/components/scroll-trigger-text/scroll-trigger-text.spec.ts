@@ -1,16 +1,16 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ScrollTrigger } from './scroll-trigger';
+import { ScrollTriggerText } from './scroll-trigger-text';
 
-describe('ScrollTrigger', () => {
-  let component: ScrollTrigger;
-  let fixture: ComponentFixture<ScrollTrigger>;
+describe('ScrollTriggerText', () => {
+  let component: ScrollTriggerText;
+  let fixture: ComponentFixture<ScrollTriggerText>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [ScrollTrigger]
+      imports: [ScrollTriggerText]
     }).compileComponents();
 
-    fixture = TestBed.createComponent(ScrollTrigger);
+    fixture = TestBed.createComponent(ScrollTriggerText);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });
